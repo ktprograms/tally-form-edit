@@ -1,5 +1,5 @@
 import { initNewTallyBlock, TallyBlockTypes, TallyClient, TallyFormModel, TallyFormStatus } from 'tally-js';
-import type { TallyField, TallyFormBlockDTO, TallyFormCreateDTO, TallyPayloadConditionalLogicDTO, TallyPayloadTitleDTO } from 'tally-js';
+import type { TallyFormBlockDTO, TallyPayloadFormTitleDTO, TallyPayloadTextDTO } from 'tally-js';
 import { v4 as uuidv4 } from 'uuid';
 
 // FIXME:
@@ -8,6 +8,18 @@ type BlockWithText = Omit<TallyFormBlockDTO, 'payload'> & {
 		safeHTMLSchema?: (string | string[])[];
 	};
 }
+
+type Mention = {
+	uuid: string;
+	field: Field;
+	defaultValue?: string;
+};
+
+type TextBlock = Omit<TallyFormBlockDTO, 'payload'> & {
+	payload: TallyPayloadTextDTO & {
+		isHidden?: boolean;
+	};
+};
 
 type CalculatedFieldsBlock = Omit<TallyFormBlockDTO, 'payload'> & {
 	payload: {
@@ -73,6 +85,9 @@ if (!form || !form.blocks || error) {
 	process.exit(1);
 }
 
+const matrixQuestions: { [groupUuid: string]: string } = {};
+const mentions: Mention[] = [];
+
 const blocks = form.blocks.flatMap((block, i, blocks) => {
 	if (
 		(block.groupType === TallyBlockTypes.QUESTION || block.groupType === TallyBlockTypes.HEADING_1)
@@ -83,10 +98,12 @@ const blocks = form.blocks.flatMap((block, i, blocks) => {
 			process.exit(1);
 		}
 
+		for (; blocks[i].type !== TallyBlockTypes.MATRIX_ROW; i++) { }
+
+		matrixQuestions[blocks[i].groupUuid] = question;
+
 		question += ' Quantity';
 		console.log('Question:', question);
-
-		for (; blocks[i].type !== TallyBlockTypes.MATRIX_ROW; i++) { }
 
 		let rows: TallyFormBlockDTO[] = [];
 		for (; blocks[i].type === TallyBlockTypes.MATRIX_ROW; i++) {
@@ -164,10 +181,6 @@ const blocks = form.blocks.flatMap((block, i, blocks) => {
 	} else if (
 		block.groupType === TallyBlockTypes.QUESTION && blocks[i + 1].groupType === TallyBlockTypes.MULTIPLE_CHOICE
 	) {
-		// console.log(block.payload.safeHTMLSchema, block, blocks[i + 1]);
-		// process.exit(1);
-		let question = block.groupUuid;
-
 		let options: TallyFormBlockDTO[] = [];
 		for (i++; blocks[i].type === TallyBlockTypes.MULTIPLE_CHOICE_OPTION; i++) {
 			options.push(blocks[i]);
@@ -189,7 +202,7 @@ const blocks = form.blocks.flatMap((block, i, blocks) => {
 							field: {
 								uuid: option.groupUuid,
 								type: 'INPUT_FIELD',
-								questionType: 'MULTIPLE_CHOICE_OPTION', // FIXME:
+								questionType: 'MULTIPLE_CHOICE_OPTION',
 								blockGroupUuid: option.groupUuid,
 								title: ' ',
 							},
@@ -213,6 +226,72 @@ const blocks = form.blocks.flatMap((block, i, blocks) => {
 		});
 
 		return [...logicBlocks, block];
+	} else if (block.uuid === '7eb1cd9c-a1d2-4df3-a3d4-1b453fcb8158' /* Order Summary H1 */) {
+		const rows = blocks.filter((block) => block.type === TallyBlockTypes.MATRIX_ROW);
+
+		const itemBlocks: TallyFormBlockDTO[] = rows.flatMap((row) => {
+			let text = (row as BlockWithText).payload.safeHTMLSchema?.flat()[0]
+			if (typeof text !== 'string') {
+				process.exit(1);
+			}
+
+			const title = `${matrixQuestions[row.groupUuid]} — ${text}`
+			const uuid = uuidv4();
+
+			const item = initNewTallyBlock(TallyBlockTypes.TEXT) as TextBlock;
+			item.payload = {
+				isHidden: true,
+				html: `<b><span class="mention" data-uuid="${uuid}">@${title}</span></b> ${title}`,
+			};
+
+			mentions.push({
+				uuid: uuid,
+				field: {
+					uuid: row.uuid,
+					type: 'INPUT_FIELD',
+					questionType: 'MATRIX',
+					blockGroupUuid: row.groupUuid,
+					title: ' ',
+				},
+			})
+
+			const logic = initNewTallyBlock(TallyBlockTypes.CONDITIONAL_LOGIC) as ConditionalLogicBlock;
+
+			logic.payload = {
+				updateUuid: null,
+				logicalOperator: 'AND',
+				conditionals: [
+					{
+						uuid: uuidv4(),
+						type: 'SINGLE',
+						payload: {
+							field: {
+								uuid: row.uuid,
+								type: 'INPUT_FIELD',
+								questionType: 'MATRIX',
+								blockGroupUuid: row.groupUuid,
+								title: ' ',
+							},
+							comparison: 'IS_NOT_EMPTY',
+							value: '',
+						},
+					},
+				],
+				actions: [
+					{
+						uuid: uuidv4(),
+						type: 'SHOW_BLOCKS',
+						payload: {
+							showBlocks: [item.uuid],
+						},
+					},
+				],
+			}
+
+			return [item, logic];
+		});
+
+		return [block, ...itemBlocks];
 	} else {
 		return block;
 	}
@@ -226,7 +305,8 @@ const newForm = new TallyFormModel(
 const title = blocks[0];
 title.payload = {
 	html: 'Testing',
-} as TallyPayloadTitleDTO;
+	mentions: mentions,
+} as TallyPayloadFormTitleDTO;
 
 newForm.addBlock(title);
 
