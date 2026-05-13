@@ -8,4 +8,5 @@
 [ ] Table top-left header
 
 MCP
+https://medium.com/@chathurangas/talk-to-any-mcp-server-in-3-curl-commands-c2fc52d3506d
 [ ] Why does it support more complicated logic than UI/API? (Can do A = B * C without intermediate B *= C)

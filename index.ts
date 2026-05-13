@@ -47,7 +47,7 @@ type ConditionalLogicBlock = Omit<TallyFormBlockDTO, 'payload'> & {
 			uuid: string;
 			type: 'JUMP_TO_PAGE' | 'CALCULATE' | 'REQUIRE_ANSWER' | 'SHOW_BLOCKS' | 'HIDE_BLOCKS' | 'HIDE_BUTTON_TO_DISABLE_COMPLETION';
 			payload: {
-				jumpToPage?: string;
+				jumpToPage?: string | number;
 				showBlocks?: string[];
 				hideBlocks?: string[];
 				requireAnswer?: string;
@@ -89,7 +89,7 @@ const blocks = form.blocks.flatMap((block, i, blocks) => {
 		for (; blocks[i].type !== TallyBlockTypes.MATRIX_ROW; i++) { }
 
 		let rows: TallyFormBlockDTO[] = [];
-		for (; blocks[i].type == TallyBlockTypes.MATRIX_ROW; i++) {
+		for (; blocks[i].type === TallyBlockTypes.MATRIX_ROW; i++) {
 			rows.push(blocks[i]);
 		}
 
@@ -161,9 +161,61 @@ const blocks = form.blocks.flatMap((block, i, blocks) => {
 		console.log(calculated, logic);
 
 		return [calculated, logic, block];
-	}
+	} else if (
+		block.groupType === TallyBlockTypes.QUESTION && blocks[i + 1].groupType === TallyBlockTypes.MULTIPLE_CHOICE
+	) {
+		// console.log(block.payload.safeHTMLSchema, block, blocks[i + 1]);
+		// process.exit(1);
+		let question = block.groupUuid;
 
-	return block;
+		let options: TallyFormBlockDTO[] = [];
+		for (i++; blocks[i].type === TallyBlockTypes.MULTIPLE_CHOICE_OPTION; i++) {
+			options.push(blocks[i]);
+		}
+
+		console.debug(options.map((b) => b.uuid));
+
+		const logicBlocks: TallyFormBlockDTO[] = options.map((option, optionIndex) => {
+			const logic = initNewTallyBlock(TallyBlockTypes.CONDITIONAL_LOGIC) as ConditionalLogicBlock;
+
+			logic.payload = {
+				updateUuid: null,
+				logicalOperator: 'AND',
+				conditionals: [
+					{
+						uuid: uuidv4(),
+						type: 'SINGLE',
+						payload: {
+							field: {
+								uuid: option.groupUuid,
+								type: 'INPUT_FIELD',
+								questionType: 'MULTIPLE_CHOICE_OPTION', // FIXME:
+								blockGroupUuid: option.groupUuid,
+								title: ' ',
+							},
+							comparison: 'IS',
+							value: option.uuid,
+						},
+					},
+				],
+				actions: [
+					{
+						uuid: uuidv4(),
+						type: 'JUMP_TO_PAGE',
+						payload: {
+							jumpToPage: optionIndex + 2,
+						}
+					},
+				]
+			};
+
+			return logic;
+		});
+
+		return [...logicBlocks, block];
+	} else {
+		return block;
+	}
 });
 
 const newForm = new TallyFormModel(
