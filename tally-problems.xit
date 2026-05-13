@@ -1,0 +1,11 @@
+[ ] Switch statment
+[ ] API safeHTHMLSchema not documented
+[ ] API questionType no MATRIX
+[ ] API no way to create form with name
+[ ] Document need for isFirst/isLast in groups
+[ ] Field uuid uses group uuid?
+[ ] Field title is required but not used but can't be empty, space works
+[ ] Table top-left header
+
+MCP
+[ ] Why does it support more complicated logic than UI/API? (Can do A = B * C without intermediate B *= C)
