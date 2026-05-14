@@ -1,6 +1,6 @@
 import { initNewTallyBlock, TallyBlockTypes, TallyClient, TallyFormModel, TallyFormStatus } from 'tally-js';
 import type { TallyFormBlockDTO, TallyPayloadFormTitleDTO, TallyPayloadTextDTO } from 'tally-js';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 
 // FIXME:
 type BlockWithText = Omit<TallyFormBlockDTO, 'payload'> & {
@@ -302,16 +302,31 @@ const newForm = new TallyFormModel(
 	TallyFormStatus.DRAFT,
 )
 
-const title = blocks[0];
-title.payload = {
-	html: 'Testing',
-	mentions: mentions,
-} as TallyPayloadFormTitleDTO;
+newForm.blocks = form.blocks.map((block) => {
+	if (block.type === TallyBlockTypes.TEXT) {
+		const textBlock = block as BlockWithText & TextBlock;
 
-newForm.addBlock(title);
+		if (textBlock.payload.isHidden === true) {
+			const html = textBlock.payload.safeHTMLSchema?.flat(5);
 
-blocks.forEach((block) => {
-	newForm.addBlock(block);
+			if (typeof html === 'object' && html?.includes('mention')) {
+				const title = html.pop()?.trim();
+
+				if (typeof title === 'string') {
+					const mention = html.find(uuidValidate);
+
+					textBlock.payload = {
+						isHidden: true,
+						html: `${title}: <b><span class="mention" data-uuid="${mention}">@${title}</span></b>`,
+					};
+
+					return textBlock;
+				}
+			}
+		}
+	}
+
+	return block;
 });
 
 console.log(await tally.forms.update({
