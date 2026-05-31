@@ -102,131 +102,133 @@ const blocks = form.blocks.flatMap((block, i, blocks) => {
 
 		matrixQuestions[blocks[i].groupUuid] = question;
 
-		question += ' Quantity';
-		console.log('Question:', question);
+		return block;
 
-		let rows: TallyFormBlockDTO[] = [];
-		for (; blocks[i].type === TallyBlockTypes.MATRIX_ROW; i++) {
-			rows.push(blocks[i]);
-		}
-
-		console.debug(rows.map((b) => b.uuid));
-
-		const calculatedFieldUUID = uuidv4();
-		const calculated = initNewTallyBlock(TallyBlockTypes.CALCULATED_FIELDS) as CalculatedFieldsBlock;
-		calculated.payload = {
-			calculatedFields: [
-				{
-					uuid: calculatedFieldUUID,
-					name: question,
-					type: 'NUMBER',
-					value: 0,
-				}
-			],
-		};
-		const calculatedGroupUUID = calculated.groupUuid;
-
-		const logic = initNewTallyBlock(TallyBlockTypes.CONDITIONAL_LOGIC) as ConditionalLogicBlock;
-		logic.payload = {
-			updateUuid: null,
-			logicalOperator: 'AND',
-			conditionals: [
-				{
-					uuid: uuidv4(),
-					type: 'SINGLE',
-					payload: {
-						field: {
-							uuid: '741ab8aa-c33d-4583-9337-3afc9090cd9e', // Name
-							type: 'INPUT_FIELD',
-							questionType: 'INPUT_TEXT',
-							blockGroupUuid: '741ab8aa-c33d-4583-9337-3afc9090cd9e', // Name
-							title: 'Name',
-						},
-						comparison: 'IS_NOT_EMPTY',
-						value: '',
-					}
-				},
-			],
-			actions: rows.map((row) => {
-				return {
-					uuid: uuidv4(),
-					type: 'CALCULATE',
-					payload: {
-						calculate: {
-							field: {
-								uuid: calculatedFieldUUID,
-								type: 'CALCULATED_FIELD',
-								questionType: 'CALCULATED_FIELDS',
-								blockGroupUuid: calculatedGroupUUID,
-								title: ' ',
-								calculatedFieldType: 'NUMBER',
-							},
-							operator: 'ADDITION',
-							value: {
-								uuid: row.uuid,
-								type: 'INPUT_FIELD',
-								questionType: 'MATRIX',
-								blockGroupUuid: row.groupUuid,
-								title: ' ',
-							},
-						},
-					},
-				} as ConditionalLogicBlock['payload']['actions'][0];
-			}),
-		}
-
-		console.log(calculated, logic);
-
-		return [calculated, logic, block];
-	} else if (
-		block.groupType === TallyBlockTypes.QUESTION && blocks[i + 1].groupType === TallyBlockTypes.MULTIPLE_CHOICE
-	) {
-		let options: TallyFormBlockDTO[] = [];
-		for (i++; blocks[i].type === TallyBlockTypes.MULTIPLE_CHOICE_OPTION; i++) {
-			options.push(blocks[i]);
-		}
-
-		console.debug(options.map((b) => b.uuid));
-
-		const logicBlocks: TallyFormBlockDTO[] = options.map((option, optionIndex) => {
-			const logic = initNewTallyBlock(TallyBlockTypes.CONDITIONAL_LOGIC) as ConditionalLogicBlock;
-
-			logic.payload = {
-				updateUuid: null,
-				logicalOperator: 'AND',
-				conditionals: [
-					{
-						uuid: uuidv4(),
-						type: 'SINGLE',
-						payload: {
-							field: {
-								uuid: option.groupUuid,
-								type: 'INPUT_FIELD',
-								questionType: 'MULTIPLE_CHOICE_OPTION',
-								blockGroupUuid: option.groupUuid,
-								title: ' ',
-							},
-							comparison: 'IS',
-							value: option.uuid,
-						},
-					},
-				],
-				actions: [
-					{
-						uuid: uuidv4(),
-						type: 'JUMP_TO_PAGE',
-						payload: {
-							jumpToPage: optionIndex + 2,
-						}
-					},
-				]
-			};
-
-			return logic;
-		});
-
-		return [...logicBlocks, block];
-	} else if (block.uuid === '7eb1cd9c-a1d2-4df3-a3d4-1b453fcb8158' /* Order Summary H1 */) {
+		// 	question += ' Quantity';
+		// 	console.log('Question:', question);
+		//
+		// 	let rows: TallyFormBlockDTO[] = [];
+		// 	for (; blocks[i].type === TallyBlockTypes.MATRIX_ROW; i++) {
+		// 		rows.push(blocks[i]);
+		// 	}
+		//
+		// 	console.debug(rows.map((b) => b.uuid));
+		//
+		// 	const calculatedFieldUUID = uuidv4();
+		// 	const calculated = initNewTallyBlock(TallyBlockTypes.CALCULATED_FIELDS) as CalculatedFieldsBlock;
+		// 	calculated.payload = {
+		// 		calculatedFields: [
+		// 			{
+		// 				uuid: calculatedFieldUUID,
+		// 				name: question,
+		// 				type: 'NUMBER',
+		// 				value: 0,
+		// 			}
+		// 		],
+		// 	};
+		// 	const calculatedGroupUUID = calculated.groupUuid;
+		//
+		// 	const logic = initNewTallyBlock(TallyBlockTypes.CONDITIONAL_LOGIC) as ConditionalLogicBlock;
+		// 	logic.payload = {
+		// 		updateUuid: null,
+		// 		logicalOperator: 'AND',
+		// 		conditionals: [
+		// 			{
+		// 				uuid: uuidv4(),
+		// 				type: 'SINGLE',
+		// 				payload: {
+		// 					field: {
+		// 						uuid: '741ab8aa-c33d-4583-9337-3afc9090cd9e', // Name
+		// 						type: 'INPUT_FIELD',
+		// 						questionType: 'INPUT_TEXT',
+		// 						blockGroupUuid: '741ab8aa-c33d-4583-9337-3afc9090cd9e', // Name
+		// 						title: 'Name',
+		// 					},
+		// 					comparison: 'IS_NOT_EMPTY',
+		// 					value: '',
+		// 				}
+		// 			},
+		// 		],
+		// 		actions: rows.map((row) => {
+		// 			return {
+		// 				uuid: uuidv4(),
+		// 				type: 'CALCULATE',
+		// 				payload: {
+		// 					calculate: {
+		// 						field: {
+		// 							uuid: calculatedFieldUUID,
+		// 							type: 'CALCULATED_FIELD',
+		// 							questionType: 'CALCULATED_FIELDS',
+		// 							blockGroupUuid: calculatedGroupUUID,
+		// 							title: ' ',
+		// 							calculatedFieldType: 'NUMBER',
+		// 						},
+		// 						operator: 'ADDITION',
+		// 						value: {
+		// 							uuid: row.uuid,
+		// 							type: 'INPUT_FIELD',
+		// 							questionType: 'MATRIX',
+		// 							blockGroupUuid: row.groupUuid,
+		// 							title: ' ',
+		// 						},
+		// 					},
+		// 				},
+		// 			} as ConditionalLogicBlock['payload']['actions'][0];
+		// 		}),
+		// 	}
+		//
+		// 	console.log(calculated, logic);
+		//
+		// 	return [calculated, logic, block];
+		// } else if (
+		// 	block.groupType === TallyBlockTypes.QUESTION && blocks[i + 1].groupType === TallyBlockTypes.MULTIPLE_CHOICE
+		// ) {
+		// 	let options: TallyFormBlockDTO[] = [];
+		// 	for (i++; blocks[i].type === TallyBlockTypes.MULTIPLE_CHOICE_OPTION; i++) {
+		// 		options.push(blocks[i]);
+		// 	}
+		//
+		// 	console.debug(options.map((b) => b.uuid));
+		//
+		// 	const logicBlocks: TallyFormBlockDTO[] = options.map((option, optionIndex) => {
+		// 		const logic = initNewTallyBlock(TallyBlockTypes.CONDITIONAL_LOGIC) as ConditionalLogicBlock;
+		//
+		// 		logic.payload = {
+		// 			updateUuid: null,
+		// 			logicalOperator: 'AND',
+		// 			conditionals: [
+		// 				{
+		// 					uuid: uuidv4(),
+		// 					type: 'SINGLE',
+		// 					payload: {
+		// 						field: {
+		// 							uuid: option.groupUuid,
+		// 							type: 'INPUT_FIELD',
+		// 							questionType: 'MULTIPLE_CHOICE_OPTION',
+		// 							blockGroupUuid: option.groupUuid,
+		// 							title: ' ',
+		// 						},
+		// 						comparison: 'IS',
+		// 						value: option.uuid,
+		// 					},
+		// 				},
+		// 			],
+		// 			actions: [
+		// 				{
+		// 					uuid: uuidv4(),
+		// 					type: 'JUMP_TO_PAGE',
+		// 					payload: {
+		// 						jumpToPage: optionIndex + 2,
+		// 					}
+		// 				},
+		// 			]
+		// 		};
+		//
+		// 		return logic;
+		// 	});
+		//
+		// 	return [...logicBlocks, block];
+	} else if (block.uuid === '5c7d8004-d3dc-4ed9-9e6b-07b99b118364' /* Order Summary H1 */) {
 		const rows = blocks.filter((block) => block.type === TallyBlockTypes.MATRIX_ROW);
 
 		const itemBlocks: TallyFormBlockDTO[] = rows.flatMap((row) => {
@@ -235,7 +237,12 @@ const blocks = form.blocks.flatMap((block, i, blocks) => {
 				process.exit(1);
 			}
 
-			const title = `${matrixQuestions[row.groupUuid]} — ${text}`
+			let question = matrixQuestions[row.groupUuid];
+			if (question === 'Khaki Skirt (Culottes)') {
+				question = 'Khaki Skirt';
+			}
+
+			const title = `${question} — ${text}`
 			const uuid = uuidv4();
 
 			const item = initNewTallyBlock(TallyBlockTypes.TEXT) as TextBlock;
@@ -297,39 +304,41 @@ const blocks = form.blocks.flatMap((block, i, blocks) => {
 	}
 });
 
-const newForm = new TallyFormModel(
-	[],
-	TallyFormStatus.DRAFT,
-)
+// const newForm = new TallyFormModel(
+// 	[],
+// 	TallyFormStatus.DRAFT,
+// )
+//
+// newForm.blocks = form.blocks.map((block) => {
+// 	if (block.type === TallyBlockTypes.TEXT) {
+// 		const textBlock = block as BlockWithText & TextBlock;
+//
+// 		if (textBlock.payload.isHidden === true) {
+// 			const html = textBlock.payload.safeHTMLSchema?.flat(5);
+//
+// 			if (typeof html === 'object' && html?.includes('mention')) {
+// 				const title = html.pop()?.trim();
+//
+// 				if (typeof title === 'string') {
+// 					const mention = html.find(uuidValidate);
+//
+// 					textBlock.payload = {
+// 						isHidden: true,
+// 						html: `${title}: <b><span class="mention" data-uuid="${mention}">@${title}</span></b>`,
+// 					};
+//
+// 					return textBlock;
+// 				}
+// 			}
+// 		}
+// 	}
+//
+// 	return block;
+// });
 
-newForm.blocks = form.blocks.map((block) => {
-	if (block.type === TallyBlockTypes.TEXT) {
-		const textBlock = block as BlockWithText & TextBlock;
-
-		if (textBlock.payload.isHidden === true) {
-			const html = textBlock.payload.safeHTMLSchema?.flat(5);
-
-			if (typeof html === 'object' && html?.includes('mention')) {
-				const title = html.pop()?.trim();
-
-				if (typeof title === 'string') {
-					const mention = html.find(uuidValidate);
-
-					textBlock.payload = {
-						isHidden: true,
-						html: `${title}: <b><span class="mention" data-uuid="${mention}">@${title}</span></b>`,
-					};
-
-					return textBlock;
-				}
-			}
-		}
-	}
-
-	return block;
-});
+form.blocks = blocks;
+form.blocks[0].payload.mentions.push(...mentions);
 
 console.log(await tally.forms.update({
-	id: '<NEW_EMPTY_FORM>',
-	...newForm,
+	...form,
 }));
